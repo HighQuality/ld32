@@ -18,11 +18,12 @@ namespace Unconventional.Game
         public bool Enabled = false;
         private Angle rotation;
         private bool oldAction;
+        private Snapshot currentSnap;
 
         private Vector2 textureSize = new Vector2(40f, 64f);
 
         public Player()
-            : base(new Cog.Vector2(32f, 64f))
+            : base(new Cog.Vector2(24f, 64f))
         {
             texture = Program.Player;
             sprite = SpriteComponent.RegisterOn(this, texture);
@@ -79,7 +80,20 @@ namespace Unconventional.Game
                 {
                     if (LocalScale.X > 0f)
                     {
-                        var snap = Scene.CreateObject<Snapshot>(WorldCoord + new Vector2(Size.X / 2f, 0f).Rotate(LocalRotation));
+                        if (currentSnap != null)
+                        {
+                            currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f, 0f).Rotate(LocalRotation);
+                            currentSnap.LocalCoord += new Vector2(0f, -currentSnap.Size.Y / 2f).Rotate(LocalRotation);
+                            currentSnap.LocalRotation = LocalRotation;
+                            currentSnap.IsFlipped = LocalScale.X < 0f;
+                            if (currentSnap.LocalRotation.Degree > 45f)
+                                currentSnap.LocalRotation = Angle.FromDegree(45f);
+                            if (currentSnap.LocalRotation.Degree < -45f)
+                                currentSnap.LocalRotation = Angle.FromDegree(-45f);
+                        }
+
+                        var snap = Scene.CreateObject<Snapshot>(null, WorldCoord + new Vector2(Size.X / 2f, 0f).Rotate(LocalRotation), currentSnap, this);
+                        currentSnap = snap;
                         snap.LocalCoord += new Vector2(0f, -snap.Size.Y / 2f).Rotate(LocalRotation);
                         snap.LocalRotation = LocalRotation;
                         if (snap.LocalRotation.Degree > 45f)
@@ -89,7 +103,19 @@ namespace Unconventional.Game
                     }
                     else
                     {
-                        var snap = Scene.CreateObject<Snapshot>(WorldCoord + new Vector2(-Size.X / 2f, 0f).Rotate(-LocalRotation));
+                        if (currentSnap != null)
+                        {
+                            currentSnap.LocalCoord = WorldCoord + new Vector2(-Size.X / 2f, 0f).Rotate(-LocalRotation);
+                            currentSnap.LocalCoord += new Vector2(-currentSnap.Size.X, -currentSnap.Size.Y / 2f).Rotate(-LocalRotation);
+                            currentSnap.LocalRotation = -LocalRotation;
+                            if (currentSnap.LocalRotation.Degree > 45f)
+                                currentSnap.LocalRotation = Angle.FromDegree(45f);
+                            if (currentSnap.LocalRotation.Degree < -45f)
+                                currentSnap.LocalRotation = Angle.FromDegree(-45f);
+                        }
+
+                        var snap = Scene.CreateObject<Snapshot>(null, WorldCoord + new Vector2(-Size.X / 2f, 0f).Rotate(-LocalRotation), currentSnap, this);
+                        currentSnap = snap;
                         snap.LocalCoord += new Vector2(-snap.Size.X, -snap.Size.Y / 2f).Rotate(-LocalRotation);
                         snap.LocalRotation = -LocalRotation;
                         if (snap.LocalRotation.Degree > 45f)

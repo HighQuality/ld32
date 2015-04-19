@@ -90,6 +90,8 @@ namespace Unconventional.Game
 
         public void AddLine(Line line, int x)
         {
+            if (x < 0 || x >= Data.Length)
+                return;
             Data[x].Add(line);
         }
 
@@ -105,6 +107,7 @@ namespace Unconventional.Game
 
             for (int x = (int)position.X; x < (int)(position.X + size.X); x++)
             {
+                //if (Engine.RandomFloat() > 0.2f)
                 AddLine(new Line
                 {
                     IsSolid = true,
@@ -131,6 +134,7 @@ namespace Unconventional.Game
             {
                 for (int x = (int)position.X; x < (int)(position.X + size.X); x++)
                 {
+                    //if (Engine.RandomFloat() > 0.2f)
                     AddLine(new Line
                     {
                         IsSolid = true,
@@ -143,6 +147,7 @@ namespace Unconventional.Game
             {
                 for (int x = (int)position.X; x < (int)(position.X + size.X); x++)
                 {
+                    //if (Engine.RandomFloat() > 0.2f)
                     AddLine(new Line
                     {
                         IsSolid = true,
@@ -183,6 +188,23 @@ namespace Unconventional.Game
                 }
             }
 
+            return true;
+        }
+
+        public bool IsFree(Vector2 point)
+        {
+            int x = (int)point.X;
+            if (x < 0 || x >= Data.Length)
+                return true;
+
+            var list = Data[x];
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                var line = list[i];
+                if (point.Y > line.From && point.Y <= line.To)
+                    return false;
+            }
             return true;
         }
     }
