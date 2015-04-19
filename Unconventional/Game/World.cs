@@ -17,58 +17,145 @@ namespace Unconventional.Game
         public const float SolidsSize = 32f;
         
         public List<Vector2> SpawnPoints = new List<Vector2>();
+        public static int LevelNum = 0;
 
         public World()
         {
-            Image level = new Image(Program.Container.ReadData("level.png"));
+            Image level = new Image(Program.Container.ReadData("level_" + LevelNum.ToString() + ".png"));
 
             SolidsWidth = level.Width;
             SolidsHeight = level.Height;
 
-            Data = new List<Line>[SolidsWidth * 32];
+            Data = new List<Line>[SolidsWidth];
             for (int i = 0; i < Data.Length; i++)
                 Data[i] = new List<Line>();
 
             for (int x = 0; x < level.Width; x++)
             {
+                int beginY = int.MinValue;
+                Color beginColor = new Color(0, 0, 0, 0);
+
                 for (int y = 0; y < level.Height; y++)
                 {
                     var color = level.GetColor(x, y);
 
-                    if (color == Color.White)
+                    if (color == Color.Green)
                     {
-                        CreateWall(new Vector2(x * 32f, y * 32), new Vector2(32f, 32f));
+                        var pos = new Vector2(x, y);
+                        Engine.InvokeTimed(0f, (offset) =>
+                        {
+                            Scene.CreateObject<LevelEnd>(pos);
+                        });
+
+                        continue;
+                    }
+                    else if (color == new Color(255, 0, 255))
+                    {
+                        var pos = new Vector2(x, y);
+                        Engine.InvokeTimed(0f, (offset) =>
+                        {
+                            var player = Scene.CreateObject<Player>(pos);
+                            player.World = this;
+                            if (MainScene.GameStarted)
+                                player.Enabled = true;
+                            ((MainScene)Scene).Player = player;
+                        });
+
+                        continue;
                     }
                     else if (color == Color.Red)
                     {
-                        CreateSlope(false, new Vector2(x * 32f, y * 32), new Vector2(32f, 32f));
+                        var pos = new Vector2(x, y);
+                        Engine.InvokeTimed(0f, (offset) =>
+                        {
+                            Scene.CreateObject<Enemy>(pos);
+                        });
+
+                        continue;
                     }
-                    else if (color == Color.Green)
+
+                    if (color != Color.Black)
                     {
-                        CreateSlope(true, new Vector2(x * 32f, y * 32), new Vector2(32f, 32f));
+                        if (beginY == int.MinValue)
+                        {
+                            beginColor = color;
+                            beginY = y;
+                        }
+                        else if (color != beginColor)
+                        {
+                            AddLine(new Line
+                            {
+                                IsSolid = beginColor == Color.Blue ? false : true,
+                                IsStatic = beginColor == Color.Yellow ? true : false,
+                                From = beginY,
+                                To = y + 1
+                            }, x);
+                            beginY = int.MinValue;
+                        }
                     }
-                    else if (color == Color.Blue)
+                    else if (beginY != int.MinValue)
                     {
-                        CreateDecoration(new Vector2(x * 32f + 16f, y * 32f + 32f));
+                        AddLine(new Line
+                        {
+                            IsSolid = beginColor == Color.Blue ? false : true,
+                            IsStatic = beginColor == Color.Yellow ? true : false,
+                            From = beginY,
+                            To = y
+                        }, x);
+                        beginY = int.MinValue;
                     }
+                }
+
+                if (beginY != int.MinValue)
+                {
+                    AddLine(new Line
+                    {
+                        IsSolid = beginColor == Color.Blue ? false : true,
+                        IsStatic = beginColor == Color.Yellow ? true : false,
+                        From = beginY,
+                        To = level.Height
+                    }, x);
+                    beginY = int.MinValue;
                 }
             }
 
-            RegisterEvent<KeyDownEvent>((int)Keyboard.Key.Escape, 0, (ev) =>
-                {
-                    var img = new Image(SolidsWidth * 32, SolidsHeight * 32);
-                    for (int y = 0; y < SolidsHeight * 32; y++)
+            switch (LevelNum)
+            {
+                case 0:
                     {
-                        for (int x = 0; x < SolidsWidth * 32; x++)
+                        Engine.InvokeTimed(0f, (offset) =>
                         {
-                            if (!IsFree(new Rectangle(new Vector2(x, y), Vector2.One)))
-                            {
-                                img.SetColor(x, y, Color.Black);
-                            }
-                        }
+                            var hint = Scene.CreateObject<Hint>(new Vector2(529, 224f));
+                            hint.HintId = 0;
+                            hint = Scene.CreateObject<Hint>(new Vector2(1004f, 164f));
+                            hint.HintId = 1;
+                            hint = Scene.CreateObject<Hint>(new Vector2(1750f, 250f));
+                            hint.HintId = 1;
+                        });
                     }
-                    img.ToBitmap().Save("output.png");
-                });
+                    break;
+                case 1:
+                    {
+                        Engine.InvokeTimed(0f, (offset) =>
+                        {
+                            var hint = Scene.CreateObject<Hint>(new Vector2(985f, 230f));
+                            hint.HintId = 2;
+                        });
+                    }
+                    break;
+                case 2:
+                    {
+                        Engine.InvokeTimed(0f, (offset) =>
+                        {
+                            var hint = Scene.CreateObject<Hint>(new Vector2(976f, 250f));
+                            hint.HintId = 2;
+                            hint = Scene.CreateObject<Hint>(new Vector2(1762f, 394f));
+                            hint.HintId = 2;
+                        });
+                    }
+                    break;
+            }
+
             RegisterEvent<DrawEvent>(0, Draw);
         }
 
@@ -76,6 +163,14 @@ namespace Unconventional.Game
         {
             int start = (int)(Scene.Camera.WorldCoord.X - Engine.Resolution.X / 2f),
                 end = (int)(Scene.Camera.WorldCoord.X + Engine.Resolution.X / 2f);
+            if (start < 0)
+                start = 0;
+            if (start >= Data.Length)
+                start = Data.Length - 1;
+            if (end < 0)
+                end = 0;
+            if (end >= Data.Length)
+                end = Data.Length - 1;
 
             for (int x = start; x < end; x++)
             {
@@ -83,7 +178,8 @@ namespace Unconventional.Game
                 for (int i = 0; i < list.Count; i++)
                 {
                     var line = list[i];
-                    ev.RenderTarget.DrawTexture(Program.Pixel, new Vector2(x, line.From), Program.Foreground, new Vector2(1f, line.To - line.From), Vector2.Zero, 0f, new Rectangle(Vector2.Zero, Vector2.One));
+
+                    ev.RenderTarget.DrawTexture(Program.Pixel, new Vector2(x, line.From), line.IsStatic ? Program.Static : Program.Foreground, new Vector2(1f, line.To - line.From), Vector2.Zero, 0f, new Rectangle(Vector2.Zero, Vector2.One));
                 }
             }
         }
@@ -93,69 +189,6 @@ namespace Unconventional.Game
             if (x < 0 || x >= Data.Length)
                 return;
             Data[x].Add(line);
-        }
-
-        public void CreateWall(Vector2 position, Vector2 size)
-        {
-            /*var block = Scene.CreateLocalObject<Block>(position + size / 2f);
-            block.Size = size;
-            block.Mask = Program.BlockMask;
-            var sc = SpriteComponent.RegisterOn(block, Program.Pixel);
-            sc.Color = Program.Foreground;
-            sc.Scale = size;
-            sc.Origin = new Vector2(.5f, .5f);*/
-
-            for (int x = (int)position.X; x < (int)(position.X + size.X); x++)
-            {
-                //if (Engine.RandomFloat() > 0.2f)
-                AddLine(new Line
-                {
-                    IsSolid = true,
-                    From = (int)position.Y,
-                    To = (int)(position.Y + size.Y)
-                }, x);
-            }
-
-            //AddSolid(block);
-        }
-
-        public void CreateDecoration(Vector2 position)
-        {
-            /*var node = Scene.CreateLocalObject<Node>(position);
-            var decoration = Program.Flower;
-            var sc = SpriteComponent.RegisterOn(node, decoration);
-            sc.Origin = new Vector2(decoration.Size.X / 2f, decoration.Size.Y);
-            sc.Color = Program.Foreground;*/
-        }
-
-        public void CreateSlope(bool isLeft, Vector2 position, Vector2 size)
-        {
-            if (isLeft)
-            {
-                for (int x = (int)position.X; x < (int)(position.X + size.X); x++)
-                {
-                    //if (Engine.RandomFloat() > 0.2f)
-                    AddLine(new Line
-                    {
-                        IsSolid = true,
-                        From = (int)(position.Y + size.Y * ((x - position.X) / size.X)),
-                        To = (int)(position.Y + size.Y)
-                    }, x);
-                }
-            }
-            else
-            {
-                for (int x = (int)position.X; x < (int)(position.X + size.X); x++)
-                {
-                    //if (Engine.RandomFloat() > 0.2f)
-                    AddLine(new Line
-                    {
-                        IsSolid = true,
-                        From = (int)(position.Y + size.Y - size.Y * ((x - position.X) / size.X)),
-                        To = (int)(position.Y + size.Y)
-                    }, x);
-                }
-            }
         }
 
         public bool IsFree(Rectangle rect)
@@ -169,12 +202,8 @@ namespace Unconventional.Game
 
             if (x1 < 0)
                 x1 = 0;
-            if (x2 >= SolidsWidth * 32)
-                x2 = SolidsWidth * 32 - 1;
-            if (y1 < 0)
-                y1 = 0;
-            if (y2 >= SolidsHeight * 32)
-                y2 = SolidsHeight * 32 - 1;
+            if (x2 >= SolidsWidth)
+                x2 = SolidsWidth - 1;
 
             for (int xp = x1; xp <= x2; xp++)
             {
@@ -183,6 +212,8 @@ namespace Unconventional.Game
                 for (int i = 0; i < list.Count; i++)
                 {
                     var line = list[i];
+                    if (!line.IsSolid)
+                        continue;
                     if (y2 > line.From && y1 <= line.To)
                         return false;
                 }
@@ -202,10 +233,31 @@ namespace Unconventional.Game
             for (int i = 0; i < list.Count; i++)
             {
                 var line = list[i];
+                if (!line.IsSolid)
+                    continue;
                 if (point.Y > line.From && point.Y <= line.To)
                     return false;
             }
             return true;
+        }
+
+        public int Sample(Vector2 point)
+        {
+            int x = (int)point.X;
+            if (x < 0 || x >= Data.Length)
+                return 0;
+
+            var list = Data[x];
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                var line = list[i];
+                if (line.IsStatic)
+                    continue;
+                if (point.Y > line.From && point.Y <= line.To)
+                    return line.IsSolid ? 1 : 2;
+            }
+            return 0;
         }
     }
 }

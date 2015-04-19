@@ -21,6 +21,7 @@ namespace Unconventional.Game
         private Snapshot currentSnap;
 
         private Vector2 textureSize = new Vector2(40f, 64f);
+        public float Stun = 0f;
 
         public Player()
             : base(new Cog.Vector2(24f, 64f))
@@ -30,7 +31,16 @@ namespace Unconventional.Game
             sprite.Origin = new Vector2(textureSize.X / 2f, textureSize.Y / 2f);
             sprite.Color = Program.Foreground;
 
+            RegisterEvent<KeyDownEvent>((int)Keyboard.Key.R, 0, Restart);
+
             Depth = -1;
+        }
+
+        public void Restart(KeyDownEvent ev)
+        {
+            Engine.SceneHost.Pop();
+            Engine.SceneHost.Push(Engine.SceneHost.CreateGlobal<MainScene>());
+            ev.Intercept = true;
         }
 
         public int DistanceToGround(int relX, int min, int max)
@@ -46,6 +56,12 @@ namespace Unconventional.Game
 
         public override void PhysicsUpdate(PhysicsUpdateEvent ev)
         {
+            Stun -= ev.DeltaTime;
+            if (Stun < 0f)
+            {
+                Stun = 0f;
+            }
+
             bool left = Engine.Window.IsKeyDown(Keyboard.Key.Left) || Engine.Window.IsKeyDown(Keyboard.Key.A),
                 right = Engine.Window.IsKeyDown(Keyboard.Key.Right) || Engine.Window.IsKeyDown(Keyboard.Key.D),
                 up = Engine.Window.IsKeyDown(Keyboard.Key.Up) || Engine.Window.IsKeyDown(Keyboard.Key.W),
@@ -54,7 +70,7 @@ namespace Unconventional.Game
                 Engine.Window.IsKeyDown(Keyboard.Key.V) ||
                 Engine.Window.IsKeyDown(Keyboard.Key.Z);
 
-            if (!Enabled)
+            if (!Enabled || Stun > 0f)
             {
                 left = false;
                 right = false;
@@ -78,51 +94,22 @@ namespace Unconventional.Game
 
                 if (action && !oldAction)
                 {
-                    if (LocalScale.X > 0f)
+                    if (currentSnap != null)
                     {
-                        if (currentSnap != null)
-                        {
-                            currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f, 0f).Rotate(LocalRotation);
-                            currentSnap.LocalCoord += new Vector2(0f, -currentSnap.Size.Y / 2f).Rotate(LocalRotation);
-                            currentSnap.LocalRotation = LocalRotation;
-                            currentSnap.IsFlipped = LocalScale.X < 0f;
-                            if (currentSnap.LocalRotation.Degree > 45f)
-                                currentSnap.LocalRotation = Angle.FromDegree(45f);
-                            if (currentSnap.LocalRotation.Degree < -45f)
-                                currentSnap.LocalRotation = Angle.FromDegree(-45f);
-                        }
-
-                        var snap = Scene.CreateObject<Snapshot>(null, WorldCoord + new Vector2(Size.X / 2f, 0f).Rotate(LocalRotation), currentSnap, this);
-                        currentSnap = snap;
-                        snap.LocalCoord += new Vector2(0f, -snap.Size.Y / 2f).Rotate(LocalRotation);
-                        snap.LocalRotation = LocalRotation;
-                        if (snap.LocalRotation.Degree > 45f)
-                            snap.LocalRotation = Angle.FromDegree(45f);
-                        if (snap.LocalRotation.Degree < -45f)
-                            snap.LocalRotation = Angle.FromDegree(-45f);
+                        currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f + 8f, Size.Y / 2f);
+                        currentSnap.LocalCoord -= new Vector2(0f, currentSnap.Size.Y);
+                        currentSnap.IsFlipped = LocalScale.X < 0f;
+                        if (currentSnap.IsFlipped)
+                            currentSnap.LocalCoord -= new Vector2(Size.X + currentSnap.Size.X + 16f, 0f);
                     }
-                    else
-                    {
-                        if (currentSnap != null)
-                        {
-                            currentSnap.LocalCoord = WorldCoord + new Vector2(-Size.X / 2f, 0f).Rotate(-LocalRotation);
-                            currentSnap.LocalCoord += new Vector2(-currentSnap.Size.X, -currentSnap.Size.Y / 2f).Rotate(-LocalRotation);
-                            currentSnap.LocalRotation = -LocalRotation;
-                            if (currentSnap.LocalRotation.Degree > 45f)
-                                currentSnap.LocalRotation = Angle.FromDegree(45f);
-                            if (currentSnap.LocalRotation.Degree < -45f)
-                                currentSnap.LocalRotation = Angle.FromDegree(-45f);
-                        }
 
-                        var snap = Scene.CreateObject<Snapshot>(null, WorldCoord + new Vector2(-Size.X / 2f, 0f).Rotate(-LocalRotation), currentSnap, this);
-                        currentSnap = snap;
-                        snap.LocalCoord += new Vector2(-snap.Size.X, -snap.Size.Y / 2f).Rotate(-LocalRotation);
-                        snap.LocalRotation = -LocalRotation;
-                        if (snap.LocalRotation.Degree > 45f)
-                            snap.LocalRotation = Angle.FromDegree(45f);
-                        if (snap.LocalRotation.Degree < -45f)
-                            snap.LocalRotation = Angle.FromDegree(-45f);
-                    }
+                    var snap = Scene.CreateObject<Snapshot>(null, Vector2.Zero, currentSnap, this);
+                    currentSnap = snap;
+                    currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f + 8f, Size.Y / 2f);
+                    currentSnap.LocalCoord -= new Vector2(0f, currentSnap.Size.Y);
+                    currentSnap.IsFlipped = LocalScale.X < 0f;
+                    if (currentSnap.IsFlipped)
+                        currentSnap.LocalCoord -= new Vector2(Size.X + currentSnap.Size.X + 16f, 0f);
                 }
             }
             else
@@ -131,6 +118,12 @@ namespace Unconventional.Game
                     Speed.X -= 240f * ev.DeltaTime;
                 if (right && !left)
                     Speed.X += 240f * ev.DeltaTime;
+
+                if (WorldCoord.Y - 200 > World.SolidsHeight)
+                {
+                    Engine.SceneHost.Pop();
+                    Engine.SceneHost.Push(Engine.SceneHost.CreateGlobal<MainScene>());
+                }
             }
 
             Speed.X = Mathf.Min(Mathf.Abs(Speed.X), 240f) * (Speed.X < 0f ? -1f : 1f);
@@ -159,13 +152,14 @@ namespace Unconventional.Game
             }
 
             // Leaning
+            if (Stun == 0f)
             {
                 Angle angle;
                 if (IsOnGround)
                 {
-                    var leftDist = DistanceToGround(-2, -2, 4);
-                    var rightDist = DistanceToGround(2, -2, 4);
-                    angle = Angle.FromVector(new Vector2(2f, rightDist) - new Vector2(-2f, leftDist));
+                    var leftDist = DistanceToGround(-5, -2, 4);
+                    var rightDist = DistanceToGround(5, -2, 4);
+                    angle = Angle.FromVector(new Vector2(5f, rightDist) - new Vector2(-5f, leftDist));
                 }
                 else
                 {

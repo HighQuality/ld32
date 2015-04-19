@@ -13,14 +13,15 @@ namespace Unconventional.Game
     {
         public SpriteComponent Sprite;
         private float timeSinceSnap;
-        private bool[] terrainData;
+        private int[] terrainData;
         public bool IsFlipped;
         private Player player;
         private Snapshot oldSnap;
+        private List<Rectangle> Enemies = new List<Rectangle>();
 
         public Snapshot()
         {
-            Size = new Cog.Vector2(200f, 96f);
+            Size = new Cog.Vector2(256f, 96f);
             Sprite = SpriteComponent.RegisterOn(this, Program.Pixel);
             Sprite.Origin = new Vector2(0f, 0f);
             Sprite.Color = Program.Foreground;
@@ -91,226 +92,182 @@ namespace Unconventional.Game
             }
         }
 
+        bool initialFlipped;
+
         public void Paste()
         {
             if (terrainData == null)
                 throw new Exception("not cut yet");
 
-            Vector2 right = LocalRotation.Unit;
-            Vector2 down = (LocalRotation + new Angle(90f)).Unit;
-
-            Vector2 topLeft = Vector2.Zero;
-            Vector2 topRight = new Vector2(Size.X, 0f).Rotate(LocalRotation);
-            Vector2 bottomLeft = new Vector2(0f, Size.Y).Rotate(LocalRotation);
-            Vector2 bottomRight = Size.Rotate(LocalRotation);
-
             var world = ((MainScene)Scene).World;
 
-            float x1 = Mathf.Min(topLeft.X, bottomLeft.X);
-            float x2 = Mathf.Max(topRight.X, bottomRight.X);
-            float y1 = Mathf.Min(topLeft.Y, topRight.Y);
-            float y2 = Mathf.Max(bottomLeft.Y, bottomRight.Y);
-
-            for (int x = (int)Math.Floor(x1); x < (int)Math.Ceiling(x2); x++)
+            for (int x = 0; x < (int)Size.X; x++)
             {
-                Vector2 localSpaceX = right * x,
-                    localSpace = Vector2.Zero;
-                int beginSolid = int.MinValue;
-
-                for (int y = (int)Math.Floor(y1); y < (int)Math.Ceiling(y2); y++)
+                int beginY = int.MinValue;
+                int beginType = 0;
+                for (int y = 0; y < (int)Size.Y; y++)
                 {
-                    localSpace = localSpaceX + down * y;
-                    localSpace = localSpace.Floor;
-                    bool solid = false;
-                    if (localSpace.X >= 0 && localSpace.Y >= 0 && localSpace.X < Size.X && localSpace.Y < Size.Y)
-                        if (terrainData[(int)localSpace.X + (int)localSpace.Y * (int)Size.X])
-                            solid = true;
-                    if (solid)
+                    int terrainType;
+
+                    if (IsFlipped)
+                        terrainType = terrainData[((int)Size.X - x - 1) + y * (int)Size.X];
+                    else
+                        terrainType = terrainData[x + y * (int)Size.X];
+                    if (terrainType != 0)
                     {
-                        if (beginSolid == int.MinValue)
-                            beginSolid = (int)localSpace.Y;
+                        if (beginY == int.MinValue)
+                        {
+                            beginY = y;
+                            beginType = terrainType;
+                        }
                     }
-                    else if (beginSolid != int.MinValue)
+                    if (terrainType != beginType)
                     {
                         world.AddLine(new Line
                         {
-                            IsSolid = true,
-                            From = beginSolid + (int)LocalCoord.Y,
-                            To = (int)localSpace.Y + (int)LocalCoord.Y
-                        }, (int)LocalCoord.X + (int)localSpace.X);
-                        beginSolid = int.MinValue;
+                            IsSolid = beginType == 1 ? true : false,
+                            From = (int)LocalCoord.Y + beginY,
+                            To = (int)LocalCoord.Y + y
+                        }, (int)LocalCoord.X + x);
+                        beginY = int.MinValue;
+                        beginType = 0;
                     }
                 }
-
-                if (beginSolid != int.MinValue)
+                if (beginY != int.MinValue)
                 {
                     world.AddLine(new Line
                     {
-                        IsSolid = true,
-                        From = beginSolid + (int)LocalCoord.Y,
-                        To = (int)localSpace.Y + (int)LocalCoord.Y
-                    }, (int)LocalCoord.X + (int)localSpace.X);
-                    beginSolid = int.MinValue;
+                        IsSolid = beginType == 1 ? true : false,
+                        From = (int)LocalCoord.Y + beginY,
+                        To = (int)LocalCoord.Y + (int)Size.Y
+                    }, (int)LocalCoord.X  + x);
                 }
             }
+
+            foreach (var enemy in Enemies)
+            {
+                if (IsFlipped != initialFlipped)
+                    Scene.CreateObject<Enemy>(WorldCoord + new Vector2(Size.X, 0f) + new Vector2(-enemy.Center.X, enemy.Center.Y)).Size = enemy.Size;
+                else
+                    Scene.CreateObject<Enemy>(WorldCoord + new Vector2(enemy.Center.X, enemy.Center.Y)).Size = enemy.Size;
+            }
+            Enemies.Clear();
         }
 
         public void Cut()
         {
+            initialFlipped = IsFlipped;
+            var boundingBox = new Rectangle(WorldCoord, Size);
+            
+            var enemies = Scene.EnumerateObjects<Enemy>().ToArray();
+            foreach (var enemy in enemies)
             {
-                Vector2 xStep = LocalRotation.Unit;
-                Vector2 yStep = (LocalRotation + Angle.FromDegree(90f)).Unit;
-                var world = ((MainScene)Scene).World;
-
-                int sizeX = (int)Size.X + 1,
-                    sizeY = (int)Size.Y + 1;
-
-                terrainData = new bool[sizeX * sizeY];
-                Image img = new Image(sizeX, sizeY);
-                for (int x = 0; x < sizeX; x++)
+                if (boundingBox.Intersects(enemy.BoundingBox))
                 {
-                    for (int y = 0; y < sizeY; y++)
+                    var overlay = boundingBox.OverlayOf(enemy.BoundingBox);
+                    var miss = overlay.Size - enemy.Size;
+                    miss.X = Mathf.Abs(miss.X);
+                    miss.Y = Mathf.Abs(miss.Y);
+                    
+                    if (miss.X > 4f)
                     {
-                        if (!world.IsFree(WorldCoord + xStep * x + yStep * y))
+                        if (enemy.LocalCoord.X > boundingBox.Center.X)
                         {
-                            terrainData[x + y * (int)Size.X] = true;
-                            img.SetColor(x, y, Color.Black);
+                            Scene.CreateObject<Enemy>(enemy.LocalCoord + new Vector2(enemy.Size.X / 2f, 0f) - new Vector2(miss.X / 2f, 0f)).Size = new Vector2(miss.X, enemy.Size.Y);
+                        }
+                        else
+                        {
+                            Scene.CreateObject<Enemy>(enemy.LocalCoord - new Vector2(enemy.Size.X / 2f, 0f) + new Vector2(miss.X / 2f, 0f)).Size = new Vector2(miss.X, enemy.Size.Y);
                         }
                     }
-                }
+                    if (miss.Y > 4f)
+                    {
+                        if (enemy.LocalCoord.Y > boundingBox.Center.Y)
+                        {
+                            Scene.CreateObject<Enemy>(enemy.LocalCoord + new Vector2(0f, enemy.Size.Y / 2f) - new Vector2(0f, miss.Y / 2f)).Size = new Vector2(enemy.Size.X, miss.Y);
+                        }
+                        else
+                        {
+                            Scene.CreateObject<Enemy>(enemy.LocalCoord - new Vector2(0f, enemy.Size.Y / 2f) + new Vector2(0f, miss.Y / 2f)).Size = new Vector2(enemy.Size.X, miss.Y);
+                        }
+                    }
 
-                img.ToBitmap().Save("output.png");
+                    if (overlay.Size.X > 2f && overlay.Size.Y > 2f)
+                        Enemies.Add(overlay);
+                    enemy.Remove();
+                }
             }
 
-            #region Remove from world
-            {
-                Vector2 horizontalUnit = LocalRotation.Unit;
-                horizontalUnit *= 1f / horizontalUnit.X;
-                horizontalUnit.X = 1f;
+            terrainData = new int[(int)Size.X * (int)Size.Y];
 
-                Vector2 verticalUnit = (LocalRotation + Angle.FromDegree(90f)).Unit;
-                if (verticalUnit.X != 0f)
+            var world = ((MainScene)Scene).World;
+
+            for (int x = 0; x < (int)Size.X; x++)
+            {
+                for (int y = 0; y < (int)Size.Y; y++)
                 {
-                    verticalUnit *= 1f / verticalUnit.X;
-                    verticalUnit.X = 1f;
+                    if (IsFlipped)
+                        terrainData[((int)Size.X - x - 1) + y * (int)Size.X] = world.Sample(LocalCoord + new Vector2(x, y));
+                    else
+                        terrainData[x + y * (int)Size.X] = world.Sample(LocalCoord + new Vector2(x, y));
                 }
 
-                Vector2 topLeft = Vector2.Zero;
-                Vector2 topRight = new Vector2(Size.X, 0f).Rotate(LocalRotation);
-                Vector2 bottomLeft = new Vector2(0f, Size.Y).Rotate(LocalRotation);
-                Vector2 bottomRight = Size.Rotate(LocalRotation);
-
-                var world = ((MainScene)Scene).World;
-
-                // kx + m
-                float hk = horizontalUnit.Y;
-                float vk = verticalUnit.Y;
-
-                float switchPoint;
-                if (topLeft.X > bottomLeft.X)
-                    switchPoint = topLeft.X;
-                else
-                    switchPoint = bottomLeft.X;
-
-                float switchPoint2;
-                if (topRight.X < bottomRight.X)
-                    switchPoint2 = topRight.X;
-                else
-                    switchPoint2 = bottomRight.X;
-
-                float x1 = Mathf.Min(topLeft.X, bottomLeft.X);
-                float x2 = Mathf.Max(topRight.X, bottomRight.X);
-
-                for (int x = (int)Math.Floor(x1); x < (int)Math.Ceiling(x2); x++)
+                var xx = (int)LocalCoord.X + x;
+                if (xx < 0 || xx >= world.Data.Length)
+                    continue;
+                var list = world.Data[xx];
+                int count = list.Count;
+                for (int i = 0; i < count; i++)
                 {
-                    var xx = (int)WorldCoord.X + x;
-                    if (xx < 0 || xx >= world.Data.Length)
-                        continue;
+                    var line = list[i];
 
-                    // y = kx + m
-                    float height;
-                    float bottom;
-                    if (x < switchPoint)
+                    if (line.IsStatic)
+                        continue;
+                    if (line.To <= LocalCoord.Y || line.From > LocalCoord.Y + Size.Y)
+                        continue;
+                    
+                    if (line.From >= LocalCoord.Y)
                     {
-                        if (topLeft.X < bottomLeft.X)
+                        line.From = (int)LocalCoord.Y + (int)Size.Y;
+                        if (line.From > line.To)
                         {
-                            height = topLeft.Y + hk * x;
-                            bottom = topLeft.Y + vk * x;
-                        }
-                        else
-                        {
-                            height = topLeft.Y + vk * x;
-                            bottom = bottomLeft.Y + hk * (x - bottomLeft.X);
+                            list.RemoveAt(i);
+                            i--;
+                            count--;
                         }
                     }
-                    else if (x > switchPoint2)
+                    else if (line.To < LocalCoord.Y + Size.Y)
                     {
-                        if (topRight.X < bottomRight.X)
+                        line.To = (int)(LocalCoord.Y);
+                        if (line.To < line.From)
                         {
-                            height = topRight.Y + vk * (x - topRight.X);
-                            bottom = bottomRight.Y + hk * (x - bottomRight.X);
-                        }
-                        else
-                        {
-                            height = topLeft.Y + hk * x;
-                            bottom = bottomRight.Y + vk * (x - bottomRight.X);
+                            list.RemoveAt(i);
+                            i--;
+                            count--;
                         }
                     }
                     else
                     {
-                        height = topLeft.Y + hk * (x - topLeft.X);
-                        bottom = bottomLeft.Y + hk * (x - bottomLeft.X);
-                    }
+                        list.RemoveAt(i);
+                        i--;
+                        count--;
 
-                    float y1 = (int)LocalCoord.Y + height,
-                        y2 = (int)LocalCoord.Y + bottom;
-
-
-                    /*    SpriteComponent.RegisterOn(Scene.CreateObject<Node>(new Vector2(WorldCoord.X + x, y1)), Program.Pixel);
-                        SpriteComponent.RegisterOn(Scene.CreateObject<Node>(new Vector2(WorldCoord.X + x, y2)), Program.Pixel);*/
-
-                    var list = world.Data[xx];
-                    int count = list.Count;
-                    for (int i = 0; i < count; i++)
-                    {
-                        var line = list[i];
-                        if (y2 > line.From && y1 <= line.To)
+                        world.AddLine(new Line
                         {
-                            if (y1 <= line.From && y2 >= line.To)
-                            {
-                                list.RemoveAt(i);
-                                i--;
-                                count--;
-                            }
-                            else if (y1 <= line.From)
-                                line.From = (int)y2;
-                            else if (y2 >= line.To)
-                                line.To = (int)y1;
-                            else
-                            {
-                                // This line needs to be split into two seperate ones
-                                list.RemoveAt(i);
-                                i--;
-                                count--;
+                            IsSolid = line.IsSolid,
+                            From = line.From,
+                            To = (int)LocalCoord.Y
+                        }, (int)LocalCoord.X + x);
 
-                                list.Add(new Line
-                                {
-                                    IsSolid = true,
-                                    From = line.From,
-                                    To = (int)y1
-                                });
-                                list.Add(new Line
-                                {
-                                    IsSolid = true,
-                                    From = (int)y2,
-                                    To = line.To
-                                });
-                            }
-                        }
+                        world.AddLine(new Line
+                        {
+                            IsSolid = line.IsSolid,
+                            From = (int)LocalCoord.Y + (int)Size.Y,
+                            To = line.To
+                        }, (int)LocalCoord.X + x);
                     }
                 }
             }
-            #endregion
         }
     }
 }

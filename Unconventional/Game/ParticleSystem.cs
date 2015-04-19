@@ -15,11 +15,12 @@ namespace Unconventional.Game
         public BlendMode BlendMode = Engine.Renderer.AlphaBlend;
 
         private Particle[] particles;
-        private int particleCount = 0;
+        public int ParticleCount = 0;
 
         public bool Emmit = true;
 
         System.Diagnostics.Stopwatch deltaWatch = System.Diagnostics.Stopwatch.StartNew();
+        public System.Diagnostics.Stopwatch TimeSinceDraw = System.Diagnostics.Stopwatch.StartNew();
 
         public ParticleSystem(int capacity)
         {
@@ -30,21 +31,24 @@ namespace Unconventional.Game
 
         protected virtual void Draw(DrawEvent ev, DrawTransformation transform)
         {
+            TimeSinceDraw.Restart();
             float deltaTime = (float)deltaWatch.Elapsed.TotalSeconds;
             deltaWatch.Restart();
-
+            if (deltaTime > 1f)
+                return;
+            
             using (var ac = BlendMode.Activate())
             {
-                for (int i = 0; i < particleCount; i++)
+                for (int i = 0; i < ParticleCount; i++)
                 {
                     particles[i].Age += deltaTime;
 
                     if (particles[i].Age >= particles[i].Life)
                     {
-                        particles[i] = particles[particleCount - 1];
-                        particleCount--;
+                        particles[i] = particles[ParticleCount - 1];
+                        ParticleCount--;
 
-                        if (i >= particleCount)
+                        if (i >= ParticleCount)
                             break;
                     }
                     else
@@ -57,7 +61,7 @@ namespace Unconventional.Game
 
         public void Add(Particle particle)
         {
-            int particleIndex = particleCount++;
+            int particleIndex = ParticleCount++;
             if (particleIndex >= particles.Length)
             {
                 Debug.Warning("Perf Warning: Had to resize particle system: {0} (Ran out of free slots)", GetType().Name);

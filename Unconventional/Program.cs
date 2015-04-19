@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Unconventional.Game;
+using Cog.Modules.Audio;
 
 namespace Unconventional
 {
@@ -21,23 +22,38 @@ namespace Unconventional
         public static Texture Logo,
             Pixel,
             Player,
-            Flower,
-            SlopeLeft,
-            SlopeRight;
-        
+            Portal,
+            Hint1,
+            Hint2,
+            Hint3,
+            EndScreen;
+
+        public static SoundEffect Music,
+            Cut,
+            EnemyHit,
+            Ground;
+
         public static BitmapFont Font12,
             Font16;
 
         public static Color Foreground,
+            Static,
             Background;
 
         static void Main(string[] args)
         {
             Background = Color.Black;
+            Static = new Color(52, 73, 94);
             Foreground = new Color(253, 227, 167);
 
             Engine.Initialize<SfmlRenderer, SfmlAudioModule>();
-            
+
+            Engine.EventHost.RegisterEvent<KeyDownEvent>((int)Keyboard.Key.Escape, 0, (ev) =>
+                {
+                    while (Engine.SceneHost.CurrentScene != null)
+                        Engine.SceneHost.Pop();
+                });
+
             Engine.EventHost.RegisterEvent<InitializeEvent>(0, (ev) =>
             {
                 Container = Engine.ResourceHost.LoadDictionary("main", "Resources");
@@ -45,9 +61,18 @@ namespace Unconventional
                 Font16 = LoadFont("Fonts/merriweather_16.fnt");
                 Logo = LoadTexture("logo.png");
                 Player = LoadTexture("player.png");
-                Flower = LoadTexture("flower.png");
-                SlopeLeft = LoadTexture("slope_left.png");
-                SlopeRight = LoadTexture("slope_right.png");
+                Portal = LoadTexture("portal.png");
+                Hint1 = LoadTexture("hint1.png");
+                Hint2 = LoadTexture("hint2.png");
+                Hint3 = LoadTexture("hint3.png");
+                EndScreen = LoadTexture("endscreen.png");
+
+                /*Music = LoadSound("music.ogg");
+                EnemyHit = LoadSound("ehit.wav");
+                Cut = LoadSound("cut.wav");
+                Ground = LoadSound("ground.wav");
+
+                Music.Play();*/
 
                 Image image = new Image(1, 1);
                 image.SetColor(0, 0, Color.White);
@@ -68,6 +93,11 @@ namespace Unconventional
         static Texture LoadTexture(string location)
         {
             return (Texture)Container.Load(location);
+        }
+
+        static SoundEffect LoadSound(string location)
+        {
+            return (SoundEffect)Container.Load(location);
         }
     }
 }

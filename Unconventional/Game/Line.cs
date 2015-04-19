@@ -7,7 +7,8 @@ namespace Unconventional.Game
 {
     class Line
     {
-        public bool IsSolid;
+        public bool IsSolid,
+            IsStatic;
         public int From,
             To;
     }
