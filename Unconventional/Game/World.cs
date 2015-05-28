@@ -17,7 +17,7 @@ namespace Unconventional.Game
         public const float SolidsSize = 32f;
         
         public List<Vector2> SpawnPoints = new List<Vector2>();
-        public static int LevelNum = 0;
+        public static int LevelNum = 8;
 
         public World()
         {
@@ -56,8 +56,6 @@ namespace Unconventional.Game
                         {
                             var player = Scene.CreateObject<Player>(pos);
                             player.World = this;
-                            if (MainScene.GameStarted)
-                                player.Enabled = true;
                             ((MainScene)Scene).Player = player;
                         });
 
@@ -186,6 +184,8 @@ namespace Unconventional.Game
 
         public void AddLine(Line line, int x)
         {
+            if (!line.IsValid)
+                return;
             if (x < 0 || x >= Data.Length)
                 return;
             Data[x].Add(line);

@@ -16,6 +16,8 @@ namespace Unconventional.Game
         public Enemy()
             : base(new Cog.Vector2(32f, 32f))
         {
+            timeSinceJump = Engine.RandomFloat() * -.1f;
+
             sc = SpriteComponent.RegisterOn(this, Program.Pixel);
             sc.Origin = Vector2.One / 2f;
             sc.Color = Program.Foreground;
@@ -25,16 +27,25 @@ namespace Unconventional.Game
         {
             sc.Scale = Size;
             var player = ((MainScene)Scene).Player;
-
-            if (player.BoundingBox.Intersects(BoundingBox))
+            if (!player.DoRemove)
             {
-                Engine.SceneHost.Pop();
-                Engine.SceneHost.Push(Engine.SceneHost.CreateGlobal<MainScene>());
+                if (player.BoundingBox.Intersects(BoundingBox))
+                {
+                    player.Remove();
+
+                    Program.EnemyHit.Play();
+                    Engine.InvokeTimed(1f, offset =>
+                    {
+                        Engine.SceneHost.Pop();
+                        Engine.SceneHost.Push(Engine.SceneHost.CreateGlobal<MainScene>());
+                    });
+                }
+
             }
+            else
+                player = null;
 
-            timeSinceJump += ev.DeltaTime;
-
-            if (player != null)
+            if (player != null && player.Enabled)
             {
                 if (!activated)
                 {
@@ -45,7 +56,9 @@ namespace Unconventional.Game
                 }
                 else
                 {
-                    if (timeSinceJump >= 2f)
+                    timeSinceJump += ev.DeltaTime;
+
+                    if (timeSinceJump >= 1f)
                     {
                         if (IsOnGround)
                         {

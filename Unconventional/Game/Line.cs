@@ -11,5 +11,14 @@ namespace Unconventional.Game
             IsStatic;
         public int From,
             To;
+
+        public bool IsValid
+        {
+            get
+            {
+                return From < To &&
+                    (To - From) > 2;
+            }
+        }
     }
 }

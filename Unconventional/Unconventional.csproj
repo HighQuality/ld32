@@ -83,18 +83,15 @@
     <None Include="Resources\Fonts\merriweather_8.fnt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Resources\music.ogg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Cog2D-irrKlang\Cog2D-irrKlang\Cog2D-irrKlang.csproj">
+      <Project>{ee868b54-5ada-4d6d-afec-e06eabdb9a1e}</Project>
+      <Name>Cog2D-irrKlang</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Cog2D\Cog2D\Cog2D.csproj">
       <Project>{5c56475f-f797-4c69-83f5-d5920c204e4a}</Project>
       <Name>Cog2D</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Cog2D\SfmlAudio\SfmlAudio.csproj">
-      <Project>{82be15e4-8dde-41e0-9ca1-a7d2375590eb}</Project>
-      <Name>SfmlAudio</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Cog2D\SfmlRenderer\SfmlRenderer.csproj">
       <Project>{084372eb-5096-4ae6-bfed-4b10637cd216}</Project>
@@ -162,7 +159,13 @@
     <Content Include="Resources\level_7.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Resources\level_8.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Resources\logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\music.wav">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Resources\player.png">

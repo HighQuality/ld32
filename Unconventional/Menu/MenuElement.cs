@@ -35,7 +35,7 @@ namespace Unconventional.Menu
         {
             Options.Add(text);
             Actions.Add(onClicked);
-            Sizes.Add(Font.MeassureString(text, Font.RenderSize));
+            Sizes.Add(Font.MeasureString(text, Font.RenderSize));
             Size += new Vector2(0f, Font.RenderLineHeight * 1.5f);
         }
 

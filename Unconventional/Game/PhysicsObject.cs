@@ -160,7 +160,7 @@ namespace Unconventional.Game
                     if (Speed.Y >= 200f)
                     {
                         const int count = 10;
-                        // Program.Ground.Play();
+                        Program.Ground.Play();
 
                         for (int i = 0; i < count; i++)
                         {

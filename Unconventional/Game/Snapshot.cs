@@ -268,6 +268,10 @@ namespace Unconventional.Game
                     }
                 }
             }
+
+            for (int x = 0; x < 2; x++)
+                for (int y = 0; y < (int)Size.Y; y++)
+                    terrainData[x + y * (int)Size.X] = 0;
         }
     }
 }

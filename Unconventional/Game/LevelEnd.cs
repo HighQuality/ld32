@@ -6,6 +6,7 @@ using Cog.Modules.Content;
 using Cog.Modules.EventHost;
 using Cog.Modules.Renderer;
 using Cog;
+using System.IO;
 
 namespace Unconventional.Game
 {
@@ -67,7 +68,7 @@ namespace Unconventional.Game
                         {
                             World.LevelNum++;
                             Engine.SceneHost.Pop();
-                            if (World.LevelNum > 7)
+                            if (Engine.ResourceHost.GetContainer("main").ReadData(string.Format("level_{0}.png", World.LevelNum)) == null)
                                 Engine.SceneHost.Push(Engine.SceneHost.CreateGlobal<EndScene>());
                             else
                                 Engine.SceneHost.Push(Engine.SceneHost.CreateGlobal<MainScene>());

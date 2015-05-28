@@ -96,20 +96,21 @@ namespace Unconventional.Game
                 {
                     if (currentSnap != null)
                     {
-                        currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f + 8f, Size.Y / 2f);
+                        currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f, Size.Y / 2f);
                         currentSnap.LocalCoord -= new Vector2(0f, currentSnap.Size.Y);
                         currentSnap.IsFlipped = LocalScale.X < 0f;
                         if (currentSnap.IsFlipped)
-                            currentSnap.LocalCoord -= new Vector2(Size.X + currentSnap.Size.X + 16f, 0f);
+                            currentSnap.LocalCoord -= new Vector2(Size.X + currentSnap.Size.X, 0f);
                     }
 
+                    Program.Cut.Play();
                     var snap = Scene.CreateObject<Snapshot>(null, Vector2.Zero, currentSnap, this);
                     currentSnap = snap;
-                    currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f + 8f, Size.Y / 2f);
+                    currentSnap.LocalCoord = WorldCoord + new Vector2(Size.X / 2f, Size.Y / 2f);
                     currentSnap.LocalCoord -= new Vector2(0f, currentSnap.Size.Y);
                     currentSnap.IsFlipped = LocalScale.X < 0f;
                     if (currentSnap.IsFlipped)
-                        currentSnap.LocalCoord -= new Vector2(Size.X + currentSnap.Size.X + 16f, 0f);
+                        currentSnap.LocalCoord -= new Vector2(Size.X + currentSnap.Size.X, 0f);
                 }
             }
             else
