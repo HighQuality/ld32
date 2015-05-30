@@ -17,7 +17,7 @@ namespace Unconventional.Game
         public const float SolidsSize = 32f;
         
         public List<Vector2> SpawnPoints = new List<Vector2>();
-        public static int LevelNum = 8;
+        public static int LevelNum = 0;
 
         public World()
         {

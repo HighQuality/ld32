@@ -229,7 +229,7 @@ namespace Unconventional.Game
                     if (line.From >= LocalCoord.Y)
                     {
                         line.From = (int)LocalCoord.Y + (int)Size.Y;
-                        if (line.From > line.To)
+                        if (!line.IsValid)
                         {
                             list.RemoveAt(i);
                             i--;
@@ -239,7 +239,7 @@ namespace Unconventional.Game
                     else if (line.To < LocalCoord.Y + Size.Y)
                     {
                         line.To = (int)(LocalCoord.Y);
-                        if (line.To < line.From)
+                        if (!line.IsValid)
                         {
                             list.RemoveAt(i);
                             i--;
